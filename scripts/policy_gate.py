@@ -18,13 +18,29 @@ def norm_sev(sev: str) -> str:
         return "Unknown"
     return s.capitalize()
 
+def load_baseline(path: Path) -> set[str]:
+    if not path:
+        return set()
+    if not path.exists():
+        print(f"[POLICY] Baseline file not found: {path} (continuing with empty baseline)")
+        return set()
+    data = json.loads(path.read_text())
+    ignore = data.get("ignore_ids", [])
+    return set(ignore)
+
+
 def main() -> int:
     # Allow: python policy_gate.py <report.json>
     report_path = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("grype-report.json")
+    baseline_path = Path(sys.argv[2]) if len(sys.argv) > 2 else None
 
     if not report_path.exists():
         print(f"[POLICY] Missing {report_path}. Did the Grype scan run?")
         return 2
+    
+    ignored_ids = load_baseline(baseline_path) if baseline_path else set()
+    if baseline_path:
+        print(f"[POLICY] Baseline: {baseline_path} (ignore_ids={len(ignore_ids)})")
 
     data = json.loads(report_path.read_text())
     matches = data.get("matches", [])
@@ -43,6 +59,12 @@ def main() -> int:
             unique[vid] = sev
 
     counts = Counter(unique.values())
+    if ignored_ids:
+        before = len(unique)
+        unique = {vid: sev for vid, sev in unique.items() if vid not in ignored_ids}
+        removed = before - len(unique)
+        print(f"[POLICY] Baseline removed {removed} known IDs")
+        counts = Counter(unique.values())
     critical = counts.get("Critical", 0)
     high = counts.get("High", 0)
 

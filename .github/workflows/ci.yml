@@ -53,7 +53,7 @@ jobs:
     steps:
       - name: Checkoout Code
         uses: actions/checkout@v4
-         
+
       - name: Set Target image
         run: echo "TARGET_IMAGE=Juice Shop" >> $GITHUB_ENV
 
@@ -87,4 +87,4 @@ jobs:
 
       - name: Policy gate (expect FAIL)
         run: |
-          python scripts/policy_gate.py juiceshop.grype.json
+          python scripts/policy_gate.py juiceshop.grype.json policy/baselines/juiceshop.json

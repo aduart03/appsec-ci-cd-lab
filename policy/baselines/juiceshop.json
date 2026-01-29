@@ -1,0 +1,14 @@
+{
+  "name": "Juice Shop baseline",
+  "notes": "Known vulns for intentionally vulnerable target. Gate should fail only on NEW Criticals not in this list.",
+  "ignore_ids": [
+    "GHSA-whpj-8f3w-67p5",
+    "GHSA-g644-9gfx-q4q4",
+    "GHSA-c7hr-j4mj-j2w6",
+    "GHSA-cchq-frgv-rjh5",
+    "GHSA-jf85-cpcp-j695",
+    "GHSA-xwcq-pm8m-c4vf",
+    "GHSA-99p7-6v5w-7xg8",
+    "GHSA-5mrr-rgp6-x4gr"
+  ]
+}
