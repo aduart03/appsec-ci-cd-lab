@@ -51,6 +51,9 @@ jobs:
   scan-juiceshop:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkoout Code
+        uses: actions/checkout@v4
+         
       - name: Set Target image
         run: echo "TARGET_IMAGE=Juice Shop" >> $GITHUB_ENV
 
