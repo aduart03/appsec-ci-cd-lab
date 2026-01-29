@@ -40,7 +40,7 @@ def main() -> int:
     
     ignored_ids = load_baseline(baseline_path) if baseline_path else set()
     if baseline_path:
-        print(f"[POLICY] Baseline: {baseline_path} (ignore_ids={len(ignore_ids)})")
+        print(f"[POLICY] Baseline: {baseline_path} (ignore_ids={len(ignored_ids)})")
 
     data = json.loads(report_path.read_text())
     matches = data.get("matches", [])
