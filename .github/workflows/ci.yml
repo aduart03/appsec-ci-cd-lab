@@ -13,3 +13,17 @@ jobs:
 
             - name: Run app
               run: python app/app.py
+
+            - name: Install Syft # Installs syft on the temp CI runner
+               run: |
+                curl -sSfl https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+
+            - name: Generate SBOM # genrate SBOM for my repo contents 'dir: .'
+               run: |
+                syft dir:. -o cuclonedx-json > sbom.cdx.json
+
+            - name: Upload SBOM artifcat # upload SBOM to artifcats manager
+               uses: actions/upload-artifact@v4
+               with:
+                  name: sbom-cuclonedx
+                  path: sbom.cdx.json
