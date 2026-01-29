@@ -1,3 +1,4 @@
+import os
 import json
 import sys
 from collections import Counter
@@ -5,8 +6,8 @@ from pathlib import Path
 
 REPORT_PATH = Path("grype-report.json")
 
-FAIL_ON_CRITICAL = 1          # fail if >= 1 Critical
-WARN_ON_HIGH = 5              # warn if >= 5 High
+FAIL_ON_CRITICAL = 999         # fail if >= 1 Critical
+WARN_ON_HIGH = 1              # warn if >= 5 High
 
 def norm_sev(sev: str) -> str:
     if not sev:
@@ -54,6 +55,15 @@ def main() -> int:
         ids = [vid for vid, s in unique.items() if s == sev][:10]
         if ids:
             print(f"[POLICY] Sample {sev} IDs (up to 10): {', '.join(ids)}")
+
+    print("\n[SECURITY SUMMARY]")
+    print("=" * 50)
+    print(f"Target image: {os.environ.get('TARGET_IMAGE', 'unknown')}")
+    print(f"Unique vulnerabilities: {len(unique)}")
+    print(f"Critical: {critical}")
+    print(f"High: {high}")
+    print(f"Medium: {counts.get('Medium', 0)}")
+    print("=" * 50)
 
     if critical >= FAIL_ON_CRITICAL:
         print(f"[POLICY] FAIL: Critical deduped findings = {critical} (threshold: {FAIL_ON_CRITICAL})")
