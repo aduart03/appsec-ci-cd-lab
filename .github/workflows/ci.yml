@@ -5,25 +5,25 @@ on:
     push:
 
 jobs:
-    build:
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout code
-              uses: actions/checkout@v4
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-            - name: Run app
-              run: python app/app.py
+      - name: Run app
+        run: python app/app.py
 
-            - name: Install Syft # Installs syft on the temp CI runner
-               run: |
-                curl -sSfl https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+      - name: Install Syft
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
 
-            - name: Generate SBOM # genrate SBOM for my repo contents 'dir: .'
-               run: |
-                syft dir:. -o cuclonedx-json > sbom.cdx.json
+      - name: Generate SBOM (CycloneDX JSON)
+        run: |
+          syft dir:. -o cyclonedx-json > sbom.cdx.json
 
-            - name: Upload SBOM artifcat # upload SBOM to artifcats manager
-               uses: actions/upload-artifact@v4
-               with:
-                  name: sbom-cuclonedx
-                  path: sbom.cdx.json
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-cyclonedx
+          path: sbom.cdx.json
