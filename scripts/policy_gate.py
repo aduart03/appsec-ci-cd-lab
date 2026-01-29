@@ -58,13 +58,13 @@ def main() -> int:
         if prev is None or order.get(sev, 0) > order.get(prev, 0):
             unique[vid] = sev
 
-    counts = Counter(unique.values())
     if ignored_ids:
         before = len(unique)
         unique = {vid: sev for vid, sev in unique.items() if vid not in ignored_ids}
         removed = before - len(unique)
         print(f"[POLICY] Baseline removed {removed} known IDs")
         counts = Counter(unique.values())
+    counts = Counter(unique.values())
     critical = counts.get("Critical", 0)
     high = counts.get("High", 0)
 
