@@ -4,10 +4,9 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-REPORT_PATH = Path("grype-report.json")
-
-FAIL_ON_CRITICAL = 999         # fail if >= 1 Critical
-WARN_ON_HIGH = 1              # warn if >= 5 High
+# Thresholds
+FAIL_ON_CRITICAL = 1   # fail if >= 1 Critical
+WARN_ON_HIGH = 1       # warn if >= 1 High (but still pass)
 
 def norm_sev(sev: str) -> str:
     if not sev:
@@ -20,45 +19,46 @@ def norm_sev(sev: str) -> str:
     return s.capitalize()
 
 def main() -> int:
-    if not REPORT_PATH.exists():
-        print(f"[POLICY] Missing {REPORT_PATH}. Did the Grype scan run?")
+    # Allow: python policy_gate.py <report.json>
+    report_path = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("grype-report.json")
+
+    if not report_path.exists():
+        print(f"[POLICY] Missing {report_path}. Did the Grype scan run?")
         return 2
 
-    data = json.loads(REPORT_PATH.read_text())
+    data = json.loads(report_path.read_text())
     matches = data.get("matches", [])
 
     # Deduplicate by vulnerability ID (e.g., CVE-xxxx) across packages/locations
     unique = {}
+    order = {"Critical": 5, "High": 4, "Medium": 3, "Low": 2, "Negligible": 1, "Unknown": 0}
+
     for m in matches:
         vuln = (m.get("vulnerability") or {})
         vid = vuln.get("id") or "UNKNOWN-ID"
         sev = norm_sev(vuln.get("severity") or "Unknown")
 
-        # Keep the "worst" severity if we see the same CVE multiple times
-        # Rough ordering:
-        order = {"Critical": 5, "High": 4, "Medium": 3, "Low": 2, "Negligible": 1, "Unknown": 0}
         prev = unique.get(vid)
         if prev is None or order.get(sev, 0) > order.get(prev, 0):
             unique[vid] = sev
 
     counts = Counter(unique.values())
-
     critical = counts.get("Critical", 0)
     high = counts.get("High", 0)
 
+    print(f"[POLICY] Report: {report_path}")
     print(f"[POLICY] Unique vulnerabilities: {len(unique)}")
     print(f"[POLICY] Counts (deduped): {dict(counts)}")
 
     # Print a quick “top list” for humans
-    top = ["Critical", "High", "Medium"]
-    for sev in top:
+    for sev in ["Critical", "High", "Medium"]:
         ids = [vid for vid, s in unique.items() if s == sev][:10]
         if ids:
             print(f"[POLICY] Sample {sev} IDs (up to 10): {', '.join(ids)}")
 
     print("\n[SECURITY SUMMARY]")
     print("=" * 50)
-    print(f"Target image: {os.environ.get('TARGET_IMAGE', 'unknown')}")
+    print(f"Target: {os.environ.get('TARGET_NAME', os.environ.get('TARGET_IMAGE', 'unknown'))}")
     print(f"Unique vulnerabilities: {len(unique)}")
     print(f"Critical: {critical}")
     print(f"High: {high}")

@@ -46,4 +46,42 @@ jobs:
             path: grype-report.json
       - name: Policy gate (fail on Critical, warn on High)
         run: |
-         python scripts/policy_gate.py
+         python scripts/policy_gate.py grype-report.json
+
+  scan-juiceshop:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set Target image
+        run: echo "TARGET_IMAGE=Juice Shop" >> $GITHUB_ENV
+
+      - name: Install tools Syft
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+
+      - name: Install Grype
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+
+      - name: Pull OWASP Juice Shop image
+        run: |
+          docker pull bkimminich/juice-shop:latest
+
+      - name: Generate SBOM (CycloneDX JSON)
+        run: |
+          syft packages docker:bkimminich/juice-shop:latest -o cyclonedx-json > juiceshop.sbom.cdx.json
+
+      - name: Scan image with Grype (JSON)
+        run: |
+          grype docker:bkimminich/juice-shop:latest -o json > juiceshop.grype.json
+
+      - name: Upload Juice Shop artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: juiceshop-scan
+          path: |
+            juiceshop.sbom.cdx.json
+            juiceshop.grype.json
+
+      - name: Policy gate (expect FAIL)
+        run: |
+          python scripts/policy_gate.py juiceshop.grype.json
