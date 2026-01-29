@@ -14,6 +14,9 @@ jobs:
       - name: Run app
         run: python app/app.py
 
+      - name: Set Target image
+        run: echo "TARGET_IMAGE=python:3.11-slim" >> $GITHUB_ENV
+
       - name: Install Syft
         run: |
           curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
@@ -28,7 +31,7 @@ jobs:
           name: sbom-cyclonedx
           path: sbom.cdx.json
 
-    # install Grype scanner
+    # Install Grype scanner
     
       - name: Install Grype
         run: |
