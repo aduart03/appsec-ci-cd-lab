@@ -25,6 +25,11 @@ jobs:
         run: |
           syft ${TARGET_IMAGE} -o cyclonedx-json > sbom.cdx.json
 
+      - name: Verify attestation (SBOM)
+        run: |
+          gh attestation verify sbom.cdx.json --repo ${{ github.repository }}
+
+
       - name: Upload SBOM artifact
         uses: actions/upload-artifact@v4
         with:
@@ -39,11 +44,22 @@ jobs:
       - name: Scan SBOM with Grype (JSON)
         run: |
          grype sbom:sbom.cdx.json -o json > grype-report.json
+
+      - name: Verify attestation (Grype report)
+        run: |
+          gh attestation verify grype-report.json --repo ${{ github.repository }}
+
       - name: Upload Grype report artifact
         uses: actions/upload-artifact@v4
         with:
             name: grype-report
             path: grype-report.json
+      - name: Attest build provenance (SBOM + Grype report)
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: |
+            sbom.cdx.json
+            grype-report.json
       - name: Policy gate (fail on Critical, warn on High)
         run: |
          python scripts/policy_gate.py grype-report.json
@@ -85,6 +101,18 @@ jobs:
             juiceshop.sbom.cdx.json
             juiceshop.grype.json
 
+      - name: Attest build provenance (Juice shop reminder files)
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: |
+            juiceshop.sbom.cdx.json
+            juiceshop.grype-report.json
+
       - name: Policy gate (expect FAIL)
         run: |
           python scripts/policy_gate.py juiceshop.grype.json policy/baselines/juiceshop.json
+
+permissions:
+     contents: read
+     id-token: write
+     attestations: write
