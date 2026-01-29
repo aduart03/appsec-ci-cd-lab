@@ -27,3 +27,20 @@ jobs:
         with:
           name: sbom-cyclonedx
           path: sbom.cdx.json
+
+    # install Grype scanner
+    
+      - name: Install Grype
+        run: |
+         curl -sSfl https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+      - name: Scan SBOM with Grype (JSON)
+        run: |
+         grype sbom:sbom.cdx.json -o json > grype-report.json
+      - name: Upload Grype report artifact
+        uses: actions/upload-artifact@v4
+        with:
+            name: grype-report
+            path: grype-report.json
+      - name: Policy gate (fail on Critical, warn on High)
+        run: |
+         python scripts/policy_gate.py
