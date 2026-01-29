@@ -23,7 +23,7 @@ jobs:
 
       - name: Generate SBOM (CycloneDX JSON)
         run: |
-          syft dir:. -o cyclonedx-json > sbom.cdx.json
+          syft ${TARGET_IMAGE} -o cyclonedx-json > sbom.cdx.json
 
       - name: Upload SBOM artifact
         uses: actions/upload-artifact@v4
