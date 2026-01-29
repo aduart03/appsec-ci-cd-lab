@@ -9,6 +9,7 @@
     "GHSA-jf85-cpcp-j695",
     "GHSA-xwcq-pm8m-c4vf",
     "GHSA-99p7-6v5w-7xg8",
-    "GHSA-5mrr-rgp6-x4gr"
+    "GHSA-5mrr-rgp6-x4gr",
+    "CVE-2025-15467"
   ]
 }
