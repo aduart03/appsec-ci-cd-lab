@@ -4,31 +4,76 @@ on:
     pull_request:
     push:
 
-permissions:
-     contents: read
-     id-token: write
-     attestations: write
-
 jobs:
   build:
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      packages: write
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Run app
-        run: python app/app.py
+        # 1.build image from Dockerfile
+        #   -might need permission to run Docker
+        #   -also permission to publish packages
+        # since you already have id-tokens and arrestation, you need one more: packages: write
+        # code goes here
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }} 
 
-      - name: Set Target image
-        run: echo "TARGET_IMAGE=python:3.11-slim" >> $GITHUB_ENV
+        # 2.
+        # code goes here
 
+      - name: Build and push image (Capture digest)
+        id: build_image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          sbom: true
+          tags: |
+            ghcr.io/${{ github.repository }}:sha-${{ github.sha }} 
+            ghcr.io/${{ github.repository }}:latest
+
+        # 3. modify: set TARGET_IMAGE to the digest
+      - name: Export immutable image reference
+        run: |
+          echo "IMAGE_NAME=ghcr.io/${{ github.repository }}" >> $GITHUB_ENV
+          echo "IMAGE_DIGEST=${{ steps.build_image.outputs.digest }}" >> $GITHUB_ENV
+          echo "IMAGE_REF=ghcr.io/${{ github.repository }}@${{ steps.build_image.outputs.digest }}" >> $GITHUB_ENV
+
+      - name: Provenance Attestation
+        uses: actions/attest-build-provenance@v3
+        id: attest
+        with:
+          subject-name: ghcr.io/${{ github.repository }} 
+          subject-digest: ${{ steps.build_image.outputs.digest }}
+          push-to-registry: true
+
+      - name: Verify Attestation
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh attestation verify oci://${IMAGE_REF} --repo ${{ github.repository }}
+          
       - name: Install Syft
         run: |
           curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
 
       - name: Generate SBOM (CycloneDX JSON)
         run: |
-          syft ${TARGET_IMAGE} -o cyclonedx-json > sbom.cdx.json
+          syft ${IMAGE_REF} -o cyclonedx-json > sbom.cdx.json
 
       - name: Upload SBOM artifact
         uses: actions/upload-artifact@v4
@@ -41,43 +86,28 @@ jobs:
       - name: Install Grype
         run: |
          curl -sSfl https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
-      - name: Scan SBOM with Grype (JSON)
+      - name: Scan image digest with Grype
         run: |
-         grype sbom:sbom.cdx.json -o json > grype-report.json
+         grype ${IMAGE_REF} -o json > grype-report.json
 
       - name: Upload Grype report artifact
         uses: actions/upload-artifact@v4
         with:
             name: grype-report
             path: grype-report.json
-            
-      - name: Attest build provenance (SBOM + Grype report)
-        uses: actions/attest-build-provenance@v1
-        with:
-          subject-path: |
-            sbom.cdx.json
-            grype-report.json
-
-      - name: Verify attestation (SBOM)
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh attestation verify sbom.cdx.json --repo ${{ github.repository }}
-
-      - name: Verify attestation (Grype report)
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh attestation verify grype-report.json --repo ${{ github.repository }}
 
       - name: Policy gate (fail on Critical, warn on High)
         run: |
          python scripts/policy_gate.py grype-report.json
 
   scan-juiceshop:
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     runs-on: ubuntu-latest
     steps:
-      - name: Checkoout Code
+      - name: Checkout Code
         uses: actions/checkout@v4
 
       - name: Set Target image
